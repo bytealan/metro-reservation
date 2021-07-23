@@ -1,0 +1,4 @@
+# access_token
+metro.authorization = *******
+# 抢票时间段
+metro.time = 0800-0810
