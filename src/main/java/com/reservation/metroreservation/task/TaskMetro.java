@@ -40,7 +40,6 @@ public class TaskMetro {
         MailUtils.sendMail(email, "已开启！");
         checkTomorrowIsHoliday();
         checkToken();
-        startReservation();
     }
 
     /**
