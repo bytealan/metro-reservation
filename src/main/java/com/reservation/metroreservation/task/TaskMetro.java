@@ -1,37 +1,51 @@
 package com.reservation.metroreservation.task;
 
+import cn.hutool.core.codec.Base64;
+import cn.hutool.core.date.DatePattern;
+import cn.hutool.core.date.DateTime;
 import cn.hutool.core.date.DateUtil;
+import cn.hutool.core.date.LocalDateTimeUtil;
 import cn.hutool.http.Header;
 import cn.hutool.http.HttpRequest;
 import cn.hutool.http.HttpUtil;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
+import com.reservation.metroreservation.utils.MailUtils;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
-import java.util.Date;
 
-
-@Configuration
-@EnableScheduling
+@Component
 public class TaskMetro {
 
-    @Value("${metro.authorization}")
     private String authorization;
 
-    @Value("${metro.time}")
     private String time;
+
+    private String email;
 
     private Boolean isReservation = true;
 
-    public TaskMetro(){
+    public TaskMetro(@Value("${metro.authorization}") String authorization, @Value("${metro.time}") String time, @Value("${metro.email}") String email){
+        this.authorization = authorization;
+        this.time = time;
+        this.email = email;
         System.out.println("地铁预约出行抢票系统已开启！");
+        MailUtils.sendMail(email, "已开启！");
         checkTomorrowIsHoliday();
+        checkToken();
+        startReservation();
     }
 
+    /**
+     * 检查今天是否需要抢票
+     */
     @Scheduled(cron = "00 00 09 * * ?")
     public void checkTomorrowIsHoliday(){
         String res = HttpUtil.get("https://tool.bitefu.net/jiari/?d=" + DateUtil.tomorrow().toString("yyyyMMdd"));
@@ -44,6 +58,26 @@ public class TaskMetro {
             isReservation = false;
         }
     }
+
+    /**
+     * 检查token是否过期
+     */
+    @Scheduled(cron = "00 00 10 * * ?")
+    public void checkToken(){
+        String aToken = Base64.decodeStr(authorization);
+        String[] aTokens = aToken.split(",");
+        DateTime tokenTime = new DateTime(Long.parseLong(aTokens[1]));
+        LocalDateTime tokenRxpireTime = LocalDateTimeUtil.of(tokenTime);
+        DateTime dateTime = new DateTime(DateUtil.format(LocalDateTime.now(),"yyyy-MM-dd") + " 12:00:00", DatePattern.NORM_DATETIME_FORMAT);
+        LocalDateTime reservationTime = LocalDateTimeUtil.of(dateTime);
+        if (tokenRxpireTime.isBefore(reservationTime)){
+            System.out.println("您的token已过期，请尽快修改！");
+            MailUtils.sendMail(email, "您的token已过期，请尽快修改！");
+        }else {
+            System.out.println("token检查完成，未过期！");
+        }
+    }
+
 
     @Scheduled(cron = "00 00 12 * * ?")
     public void startReservation(){
@@ -63,29 +97,33 @@ public class TaskMetro {
 
         System.out.println("地铁预约参数组装完成"+param.toString());
 
-        while (!flag && count < 5){
-            System.out.println(LocalDateTime.now() + ": 请求预约接口，第"+(count+1)+"次");
-            String resultStr = HttpRequest.post("https://webapi.mybti.cn/Appointment/CreateAppointment")
-                    .header(Header.AUTHORIZATION, authorization)//头信息，多个头信息多次调用此方法即可
-                    .header(Header.CONTENT_TYPE, "application/json;charset=UTF-8")
-                    .header("user-agent", "Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0.3 Mobile/15E148 Safari/604.1")
-                    .body(param.toString())
-                    .timeout(10000)//超时，毫秒
-                    .execute().body();
-            System.out.println(LocalDateTime.now() + ": 第"+(count+1)+"次预约结果返回值为："+resultStr);
-            if (resultStr != null){
-                JSONObject res = JSONUtil.parseObj(resultStr);
+        System.out.println(LocalDateTime.now() + ": 请求预约接口");
+        String resultStr = HttpRequest.post("https://webapi.mybti.cn/Appointment/CreateAppointment")
+                .header(Header.AUTHORIZATION, authorization)//头信息，多个头信息多次调用此方法即可
+                .header(Header.CONTENT_TYPE, "application/json;charset=UTF-8")
+                .header("user-agent", "Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0.3 Mobile/15E148 Safari/604.1")
+                .body(param.toString())
+                .timeout(10000)//超时，毫秒
+                .execute().body();
+        System.out.println(LocalDateTime.now() + ": 预约结果返回值为："+resultStr);
+        if (resultStr != null){
+            JSONObject res = JSONUtil.parseObj(resultStr);
+            if (null != res.get("balance")){
                 if ((Integer)res.get("balance") > 0){
-                    System.out.println(LocalDateTime.now() + ": 恭喜您第"+(count+1)+"次预约成功，明天不用排队啦！");
+                    System.out.println(LocalDateTime.now() + ": 恭喜您预约成功，明天不用排队啦！");
+                    MailUtils.sendResMail(email, "预约成功！","");
                 }else{
                     System.out.println(LocalDateTime.now() + ": 唉，又要排队了，被预约光了！");
+                    MailUtils.sendResMail(email, "预约失败，票已被抢光！",resultStr);
                 }
-                flag = true;
             }else{
                 System.out.println(LocalDateTime.now() + ": 第"+(count+1)+"次预约失败");
+                MailUtils.sendResMail(email, "预约失败，预约接口异常！",resultStr);
             }
+        }else{
+            System.out.println(LocalDateTime.now() + ": 第"+(count+1)+"次预约失败");
+            MailUtils.sendResMail(email, "预约失败，预约接口返回值为空！", "");
         }
-
         System.out.println(LocalDateTime.now() + ": 定时任务执行完成");
     }
 }
