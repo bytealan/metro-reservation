@@ -75,6 +75,10 @@ public class TaskMetro {
         }else {
             System.out.println("token检查完成，未过期！");
         }
+        String time = HttpUtil.get("https://webapi.mybti.cn/Home/GetSystemTime");
+        System.out.println("服务器时间比较：");
+        System.out.println("目标：" + time);
+        System.out.println("本机：" + LocalDateTime.now());
     }
 
 
@@ -96,33 +100,38 @@ public class TaskMetro {
 
         System.out.println("地铁预约参数组装完成"+param.toString());
 
-        System.out.println(LocalDateTime.now() + ": 请求预约接口");
-        String resultStr = HttpRequest.post("https://webapi.mybti.cn/Appointment/CreateAppointment")
-                .header(Header.AUTHORIZATION, authorization)//头信息，多个头信息多次调用此方法即可
-                .header(Header.CONTENT_TYPE, "application/json;charset=UTF-8")
-                .header("user-agent", "Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0.3 Mobile/15E148 Safari/604.1")
-                .body(param.toString())
-                .timeout(10000)//超时，毫秒
-                .execute().body();
-        System.out.println(LocalDateTime.now() + ": 预约结果返回值为："+resultStr);
-        if (resultStr != null){
-            JSONObject res = JSONUtil.parseObj(resultStr);
-            if (null != res.get("balance")){
-                if ((Integer)res.get("balance") > 0){
-                    System.out.println(LocalDateTime.now() + ": 恭喜您预约成功，明天不用排队啦！");
-                    MailUtils.sendResMail(email, "预约成功！","");
+        while (count < 3 && !flag){
+            System.out.println(LocalDateTime.now() + ": 第"+(count+1)+"次请求预约接口");
+            String resultStr = HttpRequest.post("https://webapi.mybti.cn/Appointment/CreateAppointment")
+                    .header(Header.AUTHORIZATION, authorization)//头信息，多个头信息多次调用此方法即可
+                    .header(Header.CONTENT_TYPE, "application/json;charset=UTF-8")
+                    .header("user-agent", "Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0.3 Mobile/15E148 Safari/604.1")
+                    .body(param.toString())
+                    .timeout(10000)//超时，毫秒
+                    .execute().body();
+            System.out.println(LocalDateTime.now() + ": 第"+(count+1)+"次预约结果返回值为："+resultStr);
+            if (resultStr != null){
+                JSONObject res = JSONUtil.parseObj(resultStr);
+                if (null != res.get("balance")){
+                    if ((Integer)res.get("balance") > 0){
+                        System.out.println(LocalDateTime.now() + ": 恭喜您第"+(count+1)+"次预约成功，明天不用排队啦！");
+                        flag = true;
+                    }
                 }else{
-                    System.out.println(LocalDateTime.now() + ": 唉，又要排队了，被预约光了！");
-                    MailUtils.sendResMail(email, "预约失败，票已被抢光！",resultStr);
+                    System.out.println(LocalDateTime.now() + ": 第"+(count+1)+"次预约失败");
                 }
             }else{
                 System.out.println(LocalDateTime.now() + ": 第"+(count+1)+"次预约失败");
-                MailUtils.sendResMail(email, "预约失败，预约接口异常！",resultStr);
             }
-        }else{
-            System.out.println(LocalDateTime.now() + ": 第"+(count+1)+"次预约失败");
-            MailUtils.sendResMail(email, "预约失败，预约接口返回值为空！", "");
+            count++;
         }
+
+        if (flag){
+            MailUtils.sendResMail(email, "预约成功！","");
+        }else{
+            MailUtils.sendResMail(email, "预约失败！","");
+        }
+
         System.out.println(LocalDateTime.now() + ": 定时任务执行完成");
     }
 }
