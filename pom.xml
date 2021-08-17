@@ -10,7 +10,7 @@
     </parent>
     <groupId>com.reservation</groupId>
     <artifactId>metro-reservation</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>0.0.1</version>
     <name>metro-reservation</name>
     <description>Demo project for Spring Boot</description>
     <properties>
@@ -32,6 +32,12 @@
             <groupId>com.sun.mail</groupId>
             <artifactId>javax.mail</artifactId>
             <version>1.6.2</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-core</artifactId>
+            <version>5.2.9.RELEASE</version>
         </dependency>
 
         <dependency>

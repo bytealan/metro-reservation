@@ -61,17 +61,17 @@ public class TaskMetro {
     /**
      * 检查token是否过期
      */
-    @Scheduled(cron = "00 00 10 * * ?")
+    @Scheduled(cron = "00 00 14 * * ?")
     public void checkToken(){
         String aToken = Base64.decodeStr(authorization);
         String[] aTokens = aToken.split(",");
         DateTime tokenTime = new DateTime(Long.parseLong(aTokens[1]));
         LocalDateTime tokenRxpireTime = LocalDateTimeUtil.of(tokenTime);
-        DateTime dateTime = new DateTime(DateUtil.format(LocalDateTime.now(),"yyyy-MM-dd") + " 12:00:00", DatePattern.NORM_DATETIME_FORMAT);
+        DateTime dateTime = new DateTime(DateUtil.tomorrow().toString("yyyy-MM-dd") + " 23:59:59", DatePattern.NORM_DATETIME_FORMAT);
         LocalDateTime reservationTime = LocalDateTimeUtil.of(dateTime);
         if (tokenRxpireTime.isBefore(reservationTime)){
-            System.out.println("您的token已过期，请尽快修改！");
-            MailUtils.sendMail(email, "您的token已过期，请尽快修改！");
+            System.out.println("您的token将在一天后过期，请尽快修改！");
+            MailUtils.sendMail(email, "您的token将在一天后过期，请尽快修改！");
         }else {
             System.out.println("token检查完成，未过期！");
         }
