@@ -100,7 +100,7 @@ public class TaskMetro {
 
         System.out.println("地铁预约参数组装完成"+param.toString());
 
-        while (count < 3 && !flag){
+        while (count < 5 && !flag){
             System.out.println(LocalDateTime.now() + ": 第"+(count+1)+"次请求预约接口");
             String resultStr = HttpRequest.post("https://webapi.mybti.cn/Appointment/CreateAppointment")
                     .header(Header.AUTHORIZATION, authorization)//头信息，多个头信息多次调用此方法即可
