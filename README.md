@@ -17,4 +17,8 @@ access_token有效期大概在一周
 打开application.properties
 对应修改即可，注意格式
 
-##### 3.执行就完事了
+#### 3.修改src/main/resources/mail.setting文件
+加了邮件提醒防止token过期忘记更换，预约成功与否都会发邮件
+注：邮箱需开启SMTP服务
+
+##### 4.执行就完事了
