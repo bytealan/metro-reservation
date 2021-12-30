@@ -12,10 +12,6 @@ import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.reservation.metroreservation.utils.MailUtils;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
-import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -79,13 +75,13 @@ public class TaskMetro {
     }
 
 
-    @Scheduled(cron = "00 00 12 * * ?")
+    @Scheduled(cron = "1 00 12 * * ? ")
     public void startReservation(){
         if (!isReservation) {
             return;
         }
 
-        Boolean flag = false;
+        boolean flag = false;
         int count = 0;
 
         JSONObject param = new JSONObject();
@@ -96,7 +92,7 @@ public class TaskMetro {
         param.set("snapshotTimeSlot", "0630-0930");
         param.set("timeSlot", time);
 
-        System.out.println("地铁预约参数组装完成"+param.toString());
+        System.out.println("地铁预约参数组装完成"+ param);
 
         while (count < 5 && !flag){
             System.out.println(LocalDateTime.now() + ": 第"+(count+1)+"次请求预约接口");
@@ -109,7 +105,7 @@ public class TaskMetro {
                     .execute().body();
             System.out.println(LocalDateTime.now() + ": 第"+(count+1)+"次预约结果返回值为："+resultStr);
             if (resultStr != null){
-                JSONObject res = null;
+                JSONObject res;
                 try {
                     res = JSONUtil.parseObj(resultStr);
                     if (null != res.get("balance")){
